@@ -17,19 +17,23 @@ SIDE_M = 304800
 BADGE_COLORS = {
     'R':'70AD47','A':'FFC000','A/R':'FFC000','S':'FF7070','C':'4472C4','I':'A6A6A6',
 }
+
+def rasci_color(letter):
+    return BADGE_COLORS.get(letter, 'A6A6A6')
 ROLE_DESCS = {
-    'R':  'Ejecuta y lidera esta responsabilidad.',
-    'A':  'Aprueba y supervisa el resultado final.',
-    'A/R':'Ejecuta y rinde cuentas del resultado final.',
-    'S':  'Brinda apoyo y soporte activo.',
-    'C':  'Aporta perspectiva experta como consultor.',
+    'R':  'Ejecuta directamente esta responsabilidad como responsable operativo principal.',
+    'A':  'Aprueba y responde ante la organización por los resultados de esta responsabilidad.',
+    'A/R':'Ejecuta y lidera esta responsabilidad, tomando las decisiones necesarias para garantizar su cumplimiento y calidad de resultados.',
+    'S':  'Brinda apoyo activo en esta responsabilidad, aportando su expertise especializado cuando se requiere.',
+    'C':  'Aporta perspectiva experta como área consultada, contribuyendo con información y criterio antes de las decisiones clave.',
+    'I':  'Recibe información del avance y resultados para anticipar impactos en su área y tomar acciones preventivas.',
 }
 
 # Org-chart layout (same as rebuild_final.py)
 SUBTITLE_TOP=660000; SUBTITLE_H=220000
-L2_TOP=930000; L2_H=500000; L2_W=3200000
-L3_TOP=1730000; L3_H=560000
-DESC_TOP=L3_TOP+L3_H+50000; DESC_H_STD=2200000
+L2_TOP=1900000; L2_H=500000; L2_W=3200000
+L3_TOP=2900000; L3_H=560000
+DESC_TOP=L3_TOP+L3_H+50000; DESC_H_STD=2850000
 HBAR_Y=L3_TOP-100000
 
 # ── TI DATA ───────────────────────────────────────────────────
@@ -703,9 +707,61 @@ def build_l1_l2_overview(slide, overview, dept_name):
 
 # ── RASCI detail slide builder ────────────────────────────────
 
-def rasci_color(letter):
-    base = letter.split('/')[0].strip()
-    return BADGE_COLORS.get(letter, BADGE_COLORS.get(base, 'A6A6A6'))
+def add_rasci_table(spTree, shape_id, role_shorts, resp):
+    """Build 2-row RASCI table matching Finanzas format."""
+    N = len(role_shorts)
+    total_w = 11460480
+    col_w = total_w // (N + 1)
+
+    gf = etree.SubElement(spTree, f'{{{NS_P}}}graphicFrame')
+    nvGFPr = etree.SubElement(gf, f'{{{NS_P}}}nvGraphicFramePr')
+    cNvPr = etree.SubElement(nvGFPr, f'{{{NS_P}}}cNvPr')
+    cNvPr.set('id', str(shape_id)); cNvPr.set('name', f'Table {shape_id}')
+    cNvGFPr = etree.SubElement(nvGFPr, f'{{{NS_P}}}cNvGraphicFramePr')
+    etree.SubElement(cNvGFPr, f'{{{NS_A}}}graphicFrameLocks').set('noGrp', '1')
+    etree.SubElement(nvGFPr, f'{{{NS_P}}}nvPr')
+    xfrm = etree.SubElement(gf, f'{{{NS_P}}}xfrm')
+    off = etree.SubElement(xfrm, f'{{{NS_A}}}off'); off.set('x', '365760'); off.set('y', '1508760')
+    ext = etree.SubElement(xfrm, f'{{{NS_A}}}ext'); ext.set('cx', str(total_w)); ext.set('cy', '457200')
+    graphic = etree.SubElement(gf, f'{{{NS_A}}}graphic')
+    graphicData = etree.SubElement(graphic, f'{{{NS_A}}}graphicData')
+    graphicData.set('uri', 'http://schemas.openxmlformats.org/drawingml/2006/table')
+    tbl = etree.SubElement(graphicData, f'{{{NS_A}}}tbl')
+    tblPr = etree.SubElement(tbl, f'{{{NS_A}}}tblPr')
+    tblPr.set('firstRow', '1'); tblPr.set('bandRow', '1')
+    etree.SubElement(tblPr, f'{{{NS_A}}}tableStyleId').text = '{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}'
+    tblGrid = etree.SubElement(tbl, f'{{{NS_A}}}tblGrid')
+    for _ in range(N + 1):
+        etree.SubElement(tblGrid, f'{{{NS_A}}}gridCol').set('w', str(col_w))
+
+    def make_tc(row_el, text, bg_hex, text_hex='FFFFFF', bold=False):
+        tc = etree.SubElement(row_el, f'{{{NS_A}}}tc')
+        txBody = etree.SubElement(tc, f'{{{NS_A}}}txBody')
+        etree.SubElement(txBody, f'{{{NS_A}}}bodyPr')
+        etree.SubElement(txBody, f'{{{NS_A}}}lstStyle')
+        p = etree.SubElement(txBody, f'{{{NS_A}}}p')
+        pPr = etree.SubElement(p, f'{{{NS_A}}}pPr'); pPr.set('algn', 'ctr')
+        r = etree.SubElement(p, f'{{{NS_A}}}r')
+        rPr = etree.SubElement(r, f'{{{NS_A}}}rPr')
+        rPr.set('sz', '700'); rPr.set('b', '1' if bold else '0')
+        sf = etree.SubElement(rPr, f'{{{NS_A}}}solidFill')
+        etree.SubElement(sf, f'{{{NS_A}}}srgbClr').set('val', text_hex)
+        etree.SubElement(r, f'{{{NS_A}}}t').text = text
+        tcPr = etree.SubElement(tc, f'{{{NS_A}}}tcPr')
+        sf2 = etree.SubElement(tcPr, f'{{{NS_A}}}solidFill')
+        etree.SubElement(sf2, f'{{{NS_A}}}srgbClr').set('val', bg_hex)
+
+    tr1 = etree.SubElement(tbl, f'{{{NS_A}}}tr'); tr1.set('h', '228600')
+    make_tc(tr1, 'Responsabilidad', '1F3964', 'FFFFFF', bold=True)
+    for short in role_shorts:
+        make_tc(tr1, short, '1F3964', 'FFFFFF', bold=True)
+
+    tr2 = etree.SubElement(tbl, f'{{{NS_A}}}tr'); tr2.set('h', '228600')
+    abbr = resp[1][:38] + '...' if len(resp[1]) > 38 else resp[1]
+    make_tc(tr2, abbr, 'FFFFFF', '000000', bold=False)
+    for i in range(N):
+        letter = resp[3].get(i, 'I')
+        make_tc(tr2, letter, rasci_color(letter), 'FFFFFF', bold=False)
 
 
 def build_rasci_slide(slide, role_shorts, role_fulls, resp, dept_name, start_id=50):
@@ -714,60 +770,37 @@ def build_rasci_slide(slide, role_shorts, role_fulls, resp, dept_name, start_id=
     clear_slide(slide)
     sid = start_id
     N = len(role_shorts)
+    BADGE_W = 640080
+    DESC_X = 1097280
+    DESC_W = 10728960
+    ROW_H = 582250
+    START_Y = 2100000
 
-    add_title_ph(spTree, sid, f'Matriz RASCI - Detalle | {dept_name}', font_pt=20); sid += 1
+    add_title_ph(spTree, sid, f'Matriz RASCI - Detalle | {dept_name}', font_pt=22); sid += 1
 
-    # Responsibility name + description
-    txb = make_sp(spTree, sid, 'RespName', MARGIN, 700000, CONTENT_W, 720000,
+    txb = make_sp(spTree, sid, 'RespName', 365760, 777240, 11460480, 640080,
                   no_fill=True, no_border=True, lIns=0, rIns=0, tIns=0, bIns=0); sid += 1
-    add_para(txb, resp[1], 14, bold=True, color='1F3864')
-    add_para(txb, resp[2], 10, color='595959', spc_before_pt=4)
+    add_para(txb, resp[1], 14, bold=True, color='1F3964')
+    add_para(txb, resp[2], 10, color='404040', spc_before_pt=4)
 
-    # Role matrix header + badges
-    col_w = CONTENT_W // N
-    for i, short in enumerate(role_shorts):
-        x = MARGIN + i * col_w
-        txb = make_sp(spTree, sid, f'RHdr_{i}', x, 1530000, col_w - 4000, 270000,
-                      fill_hex='1F3864', no_border=True,
-                      lIns=10000, rIns=10000, tIns=15000, bIns=10000); sid += 1
-        add_para(txb, short, 7, bold=True, color='FFFFFF', align='ctr')
+    add_rasci_table(spTree, sid, role_shorts, resp); sid += 1
 
-        letter = resp[3].get(i, 'I')
-        bg = rasci_color(letter)
-        txb = make_sp(spTree, sid, f'Badge_{i}', x, 1810000, col_w - 4000, 290000,
-                      fill_hex=bg, no_border=True,
-                      lIns=10000, rIns=10000, tIns=15000, bIns=10000); sid += 1
-        add_para(txb, letter, 10, bold=True, color='FFFFFF', align='ctr')
-
-    # Explanation box
-    txb = make_sp(spTree, sid, 'Expl', MARGIN, 2200000, CONTENT_W, 460000,
-                  fill_hex='F5F5F5', border_hex='D0D0D0', border_pt=0.5,
-                  lIns=60000, rIns=60000, tIns=40000, bIns=40000); sid += 1
-    add_para(txb, 'Razonamiento: ', 9, bold=True, color='1F3864')
-    add_para(txb, resp[4], 9, color='404040', spc_before_pt=2)
-
-    # Per-role rows (non-I only)
-    BADGE_W = 650000
-    current_y = 2780000
+    current_y = START_Y
     for i, full in enumerate(role_fulls):
-        letter = resp[3].get(i, 'I')
-        if letter == 'I':
-            continue
-        if current_y + 420000 > SLIDE_H - 80000:
+        if current_y + ROW_H > SLIDE_H:
             break
+        letter = resp[3].get(i, 'I')
         bg = rasci_color(letter)
-        txb = make_sp(spTree, sid, f'RBadge_{i}', MARGIN, current_y, BADGE_W, 400000,
+        txb = make_sp(spTree, sid, f'RBadge_{i}', MARGIN, current_y, BADGE_W, ROW_H,
                       fill_hex=bg, no_border=True,
                       lIns=10000, rIns=10000, tIns=20000, bIns=20000); sid += 1
-        add_para(txb, letter, 12, bold=True, color='FFFFFF', align='ctr')
-
-        desc_text = ROLE_DESCS.get(letter, 'Involucrado en esta responsabilidad.')
-        txb = make_sp(spTree, sid, f'RDesc_{i}', MARGIN + BADGE_W + 25000,
-                      current_y, CONTENT_W - BADGE_W - 25000, 400000,
-                      fill_hex='F8FAFF', border_hex='C9D8F0', border_pt=0.5,
+        add_para(txb, letter, 10, bold=True, color='FFFFFF', align='ctr')
+        desc_text = ROLE_DESCS.get(letter, ROLE_DESCS['I'])
+        txb = make_sp(spTree, sid, f'RDesc_{i}', DESC_X, current_y, DESC_W, ROW_H,
+                      no_fill=True, border_hex=bg, border_pt=3,
                       lIns=55000, rIns=55000, tIns=20000, bIns=20000); sid += 1
-        add_para(txb, f'{full}: {desc_text}', 9, color='1F3864')
-        current_y += 425000
+        add_para(txb, f'{full}: {desc_text}', 9, color='000000')
+        current_y += ROW_H
 
 
 # ── Intro slide text helpers ──────────────────────────────────
